@@ -10,6 +10,7 @@ import yaml
 
 CONFIG_NAME = "marie.yaml"
 GLOBAL_CONFIG = Path.home() / ".marie" / "config.yaml"
+_WATCH_IGNORE = [".crdownload", ".part", ".download", ".tmp"]  # watch 默认忽略的临时后缀
 
 
 @dataclass
@@ -28,6 +29,8 @@ class Config:
     model: str = "qwen-plus"
     vision_model: str = "qwen-vl-plus"
     base_url: str = ""  # OpenAI 兼容接口地址;留空用内置默认(可被环境变量 MARIE_BASE_URL 覆盖)
+    watch_debounce: float = 2.0  # watch:文件大小稳定多少秒后才处理(规避下载中)
+    watch_ignore: List[str] = field(default_factory=lambda: list(_WATCH_IGNORE))
     categories: Dict[str, Category] = field(default_factory=dict)
     fallback: str = "其他/待分类"
 
@@ -39,6 +42,8 @@ ai_fallback: true            # 模糊文件是否调用 AI
 model: qwen-plus
 vision_model: qwen-vl-plus
 base_url: https://dashscope.aliyuncs.com/compatible-mode/v1  # 任意 OpenAI 兼容接口
+watch_debounce: 2            # watch:文件大小稳定多少秒后处理(规避下载中)
+watch_ignore: [.crdownload, .part, .download, .tmp]  # watch 忽略的临时后缀
 
 categories:
   视频:   { ext: [.mp4, .mov, .mkv] }
@@ -76,6 +81,8 @@ def _parse(data: dict) -> Config:
         model=data.get("model", "qwen-plus"),
         vision_model=data.get("vision_model", "qwen-vl-plus"),
         base_url=data.get("base_url", ""),
+        watch_debounce=float(data.get("watch_debounce", 2.0)),
+        watch_ignore=list(data.get("watch_ignore") or _WATCH_IGNORE),
         categories=cats,
         fallback=data.get("fallback", "其他/待分类"),
     )

@@ -8,15 +8,17 @@ from .models import Action
 JOURNAL = ".marie_undo.json"
 
 
-def execute(actions: List[Action], base: Path) -> int:
-    """执行移动,并写入撤销日志(只移动,绝不删除)。"""
-    moved = []
+def execute(actions: List[Action], base: Path, append: bool = False) -> int:
+    """执行移动,并写入撤销日志(只移动,绝不删除)。append=True 时追加到已有日志(watch 用)。"""
+    j = base / JOURNAL
+    moved = json.loads(j.read_text()) if append and j.exists() else []
+    n0 = len(moved)
     for a in actions:
         a.dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(a.src), str(a.dest))
         moved.append({"src": str(a.src), "dest": str(a.dest)})
-    (base / JOURNAL).write_text(json.dumps(moved, ensure_ascii=False, indent=2))
-    return len(moved)
+    j.write_text(json.dumps(moved, ensure_ascii=False, indent=2))
+    return len(moved) - n0
 
 
 def undo(base: Path) -> int:
