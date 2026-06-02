@@ -2,8 +2,9 @@
 
 > 用自然语言指挥 AI 整理任何文件夹 —— 它能读懂文件**内容**,自动分类、重命名、归档。
 
-<!-- TODO(最重要): 在这里放一张演示 GIF,乱文件夹 → 一键整洁 -->
-<!-- ![demo](docs/demo.gif) -->
+<p align="center">
+  <img src="docs/demo.gif" alt="Marie 演示:乱文件夹一键整洁" width="800">
+</p>
 
 ## ✨ Features
 - 🗂️ 一键整理凌乱的下载 / 桌面文件夹
