@@ -27,12 +27,27 @@ python examples/make_demo.py
 marie organize examples/messy
 ```
 
+## 🧠 AI 智能分类(读内容 + 自然语言规则)
+通过 OpenAI 兼容接口调用,默认用通义千问(Qwen / DashScope):
+```bash
+pip install -e ".[llm,extract]"
+export MARIE_API_KEY=sk-你的DashScope密钥
+
+marie organize examples/messy --ai                       # AI 读内容分类+重命名
+marie organize ~/Downloads --rule "发票放到 财务/发票,按内容重命名"   # 自然语言规则
+```
+也可切换其它模型(同一套接口):
+```bash
+export MARIE_BASE_URL=http://localhost:11434/v1   # 本地 Ollama
+export MARIE_MODEL=qwen2.5                          # 或 qwen-plus / gpt-4o-mini ...
+```
+
 ## 🗺️ Roadmap
 - [x] 规则分类 + 预览 + 执行 + 撤销
-- [ ] LLM 读内容智能分类
-- [ ] 自然语言规则
-- [ ] 本地模型(Ollama)
+- [x] LLM 读内容智能分类 + 自然语言规则
+- [ ] 本地模型(Ollama)开箱即用
 - [ ] 图片 / PDF 多模态理解
+- [ ] 配置文件持久化规则
 
 ## 📄 License
 MIT

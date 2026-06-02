@@ -7,8 +7,8 @@ requires-python = ">=3.9"
 dependencies = ["typer>=0.9", "rich>=13"]
 
 [project.optional-dependencies]
-extract = ["pypdf>=4", "python-docx>=1"]   # 内容提取(周末2 LLM 用)
-# llm = ["litellm>=1.0", "pydantic>=2"]     # 周末2:接入大模型
+extract = ["pypdf>=4", "python-docx>=1"]   # 内容提取
+llm = ["openai>=1.0"]                       # LLM 分类(OpenAI 兼容接口,支持 Qwen/Ollama)
 
 [project.scripts]
 marie = "marie.cli:app"

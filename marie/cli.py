@@ -4,11 +4,12 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from .classifier import classify
 from .executor import execute, undo
 from .planner import plan
 from .scanner import scan
 
-app = typer.Typer(help="Marie — 用 AI 整理任何文件夹(MVP:规则版)", add_completion=False)
+app = typer.Typer(help="Marie — 用 AI 整理任何文件夹", add_completion=False)
 console = Console()
 
 
@@ -17,6 +18,8 @@ def organize(
     folder: Path = typer.Argument(..., exists=True, file_okay=False, help="要整理的文件夹"),
     apply: bool = typer.Option(False, "--apply", help="真正执行(默认仅预览 dry-run)"),
     recursive: bool = typer.Option(False, "--recursive", "-r", help="递归子文件夹"),
+    ai: bool = typer.Option(False, "--ai", help="用 LLM 读内容智能分类+重命名"),
+    rule: str = typer.Option("", "--rule", help="自然语言整理规则(自动启用 --ai)"),
 ):
     """扫描并整理文件夹。默认只预览,加 --apply 执行。"""
     files = scan(folder, recursive)
@@ -24,7 +27,15 @@ def organize(
         console.print("[yellow]没有可整理的文件。[/]")
         raise typer.Exit()
 
-    actions = plan(files, folder)
+    decide = None
+    if ai or rule:
+        from .llm import classify_files
+
+        with console.status("[cyan]AI 分析文件中…[/]"):
+            decisions = classify_files(files, rule)
+        decide = lambda f: decisions.get(f.path, (classify(f), f.name))
+
+    actions = plan(files, folder, decide)
     table = Table(title=f"整理预览:{folder}  (共 {len(actions)} 个文件)")
     table.add_column("文件", style="cyan", overflow="fold")
     table.add_column("分类", style="magenta")
