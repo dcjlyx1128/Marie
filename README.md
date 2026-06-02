@@ -27,26 +27,31 @@ python examples/make_demo.py
 marie organize examples/messy
 ```
 
-## 🧠 AI 智能分类(读内容 + 自然语言规则)
+## 🧠 AI 智能分类(读内容 + 看图 + 自然语言规则)
 通过 OpenAI 兼容接口调用,默认用通义千问(Qwen / DashScope):
 ```bash
-pip install -e ".[llm,extract]"
+pip install -e ".[llm,extract,vision]"
 export MARIE_API_KEY=sk-你的DashScope密钥
 
-marie organize examples/messy --ai                       # AI 读内容分类+重命名
+marie organize examples/messy --ai                       # 文本读内容、图片看画面,智能分类+重命名
 marie organize ~/Downloads --rule "发票放到 财务/发票,按内容重命名"   # 自然语言规则
 ```
+- 📄 文本/文档(txt/pdf/docx…):读内容片段批量分类
+- 🖼️ 图片(jpg/png…):用视觉模型(qwen-vl)**看图**判断是截图/照片/发票…(自动压缩到 768px 省 token)
+
 也可切换其它模型(同一套接口):
 ```bash
 export MARIE_BASE_URL=http://localhost:11434/v1   # 本地 Ollama
-export MARIE_MODEL=qwen2.5                          # 或 qwen-plus / gpt-4o-mini ...
+export MARIE_MODEL=qwen2.5                          # 文本模型
+export MARIE_VISION_MODEL=qwen-vl-max               # 视觉模型
 ```
 
 ## 🗺️ Roadmap
 - [x] 规则分类 + 预览 + 执行 + 撤销
 - [x] LLM 读内容智能分类 + 自然语言规则
+- [x] 图片多模态理解(看图分类)
 - [ ] 本地模型(Ollama)开箱即用
-- [ ] 图片 / PDF 多模态理解
+- [ ] 并发处理 + 结果缓存(提速、省钱)
 - [ ] 配置文件持久化规则
 
 ## 📄 License
