@@ -64,6 +64,27 @@ def test_organize_idempotent(tmp_path):
     assert scan(tmp_path, recursive=True, skip=skip) == []
 
 
+def test_scan_skips_config_file(tmp_path):
+    (tmp_path / "marie.yaml").write_text("base: .")
+    (tmp_path / "a.mp4").write_text("x")
+    names = {f.name for f in scan(tmp_path)}
+    assert names == {"a.mp4"}  # 配置文件自身不被当作待整理文件
+
+
+def test_undo_removes_empty_dirs(tmp_path):
+    from marie.executor import undo
+
+    c = default_config()
+    (tmp_path / "a.mp4").write_text("x")
+    files = scan(tmp_path, skip=category_dirs(c))
+    dec = decide_all(files, c)
+    execute(plan(files, tmp_path, lambda f: dec[f.path]), tmp_path)
+    assert (tmp_path / "视频").is_dir()
+    undo(tmp_path)
+    assert (tmp_path / "a.mp4").exists()
+    assert not (tmp_path / "视频").exists()  # 空目录被清理
+
+
 def test_ai_constrains_to_subcategory(monkeypatch):
     c = default_config()
     f = _fi("report.pdf")  # 文档,ai:true

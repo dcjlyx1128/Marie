@@ -10,11 +10,12 @@ from .executor import execute
 from .models import FileInfo
 from .pipeline import category_dirs, decide_all
 from .planner import plan
+from .config import CONFIG_NAME
 
 
 def _ignored(path: Path, config) -> bool:
-    """隐藏文件、下载中的临时后缀:忽略。"""
-    return path.name.startswith(".") or path.suffix.lower() in config.watch_ignore
+    """隐藏文件、配置文件、下载中的临时后缀:忽略。"""
+    return path.name.startswith(".") or path.name == CONFIG_NAME or path.suffix.lower() in config.watch_ignore
 
 
 def _in_skip(path: Path, folder: Path, skip) -> bool:
@@ -54,10 +55,13 @@ def handle(path: Path, folder: Path, config):
 
 def watch(folder: Path, config, log=print):
     """前台监听 folder,新文件稳定后自动归类。Ctrl-C 停止。"""
+    import threading
+
     from watchdog.events import FileSystemEventHandler
     from watchdog.observers import Observer
 
-    folder, skip = Path(folder), category_dirs(config)
+    folder, skip = Path(folder).resolve(), category_dirs(config)
+    lock = threading.Lock()
 
     class _Handler(FileSystemEventHandler):
         def on_created(self, e):
@@ -69,13 +73,17 @@ def watch(folder: Path, config, log=print):
                 self._go(Path(e.dest_path))
 
         def _go(self, path):
-            if _ignored(path, config) or _in_skip(path, folder, skip) or not _stable(path, config.watch_debounce):
+            path = Path(path).resolve()  # FSEvents 路径已规范化(如 /var→/private/var),folder 也规范化以对齐
+            if _ignored(path, config) or _in_skip(path, folder, skip):
                 return
-            try:
-                dest = handle(path, folder, config)
-            except Exception as ex:
-                log(f"[red]处理失败 {path.name}: {ex}[/]")
-                return
+            with lock:  # 串行处理:规避同一文件的重复/并发事件(如 cp 同时触发 created+moved)造成重复搬动
+                if not _stable(path, config.watch_debounce):
+                    return
+                try:
+                    dest = handle(path, folder, config)
+                except Exception as ex:
+                    log(f"[red]处理失败 {path.name}: {ex}[/]")
+                    return
             if dest:
                 log(f"[green]✓ {path.name} → {dest.relative_to(folder)}[/]")
 

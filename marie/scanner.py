@@ -1,15 +1,16 @@
 from pathlib import Path
 from typing import List, Set
 
+from .config import CONFIG_NAME
 from .models import FileInfo
 
 
 def scan(folder: Path, recursive: bool = False, skip: Set[str] = frozenset()) -> List[FileInfo]:
-    """扫描文件夹,返回文件列表(跳过隐藏文件与已整理的分类目录 skip)。"""
+    """扫描文件夹,返回文件列表(跳过隐藏文件、配置文件、已整理的分类目录 skip)。"""
     it = folder.rglob("*") if recursive else folder.iterdir()
     files = []
     for p in it:
-        if not p.is_file() or p.name.startswith("."):
+        if not p.is_file() or p.name.startswith(".") or p.name == CONFIG_NAME:
             continue
         rel = p.relative_to(folder)
         if len(rel.parts) > 1 and rel.parts[0] in skip:  # 已整理目录,跳过(幂等)

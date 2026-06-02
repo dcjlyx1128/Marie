@@ -22,7 +22,8 @@ def execute(actions: List[Action], base: Path, append: bool = False) -> int:
 
 
 def undo(base: Path) -> int:
-    """根据日志把文件移回原位。"""
+    """根据日志把文件移回原位,并清理因此变空的分类目录(只删空目录,绝不碰文件)。"""
+    base = Path(base)
     j = base / JOURNAL
     if not j.exists():
         return 0
@@ -33,4 +34,12 @@ def undo(base: Path) -> int:
             src.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(dest), str(src))
     j.unlink()
+    for m in moves:  # 自底向上删空目录,遇到非空即停
+        d = Path(m["dest"]).parent
+        while d != base and base in d.parents:
+            try:
+                d.rmdir()
+            except OSError:
+                break
+            d = d.parent
     return len(moves)

@@ -17,3 +17,10 @@ def test_plan_categorizes(tmp_path):
 def test_plan_dest_under_category(tmp_path):
     [action] = plan([_mk(tmp_path, "a.jpg")], tmp_path)
     assert action.dest == tmp_path / "图片" / "a.jpg"
+
+
+def test_plan_skips_already_placed(tmp_path):
+    # 已在目标位置的文件不再产生移动(幂等,watch 据此避免重复搬动)
+    (tmp_path / "音频").mkdir()
+    f = _mk(tmp_path / "音频", "song.mp3")
+    assert plan([f], tmp_path, lambda _f: ("音频", "song.mp3")) == []
