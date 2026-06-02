@@ -10,3 +10,6 @@ examples/messy/
 
 .idea/
 .DS_Store
+
+# 本地规划文档,不推送(保留 docs/demo.gif)
+docs/*.md
