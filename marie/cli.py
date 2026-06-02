@@ -51,6 +51,19 @@ def organize(
         console.print("[dim]这是预览(dry-run)。确认无误后加 [bold]--apply[/] 执行。[/]")
 
 
+@app.command()
+def init(folder: Path = typer.Argument(Path("."), file_okay=False, help="在哪个目录生成配置")):
+    """生成默认配置文件 marie.yaml。"""
+    from .config import CONFIG_NAME, init_config
+
+    target = folder / CONFIG_NAME
+    try:
+        init_config(target)
+        console.print(f"[green]✓ 已生成配置:[bold]{target}[/]。编辑它来自定义分类体系。[/]")
+    except FileExistsError:
+        console.print(f"[yellow]配置已存在,未覆盖:{target}[/]")
+
+
 @app.command("undo")
 def undo_cmd(folder: Path = typer.Argument(..., exists=True, file_okay=False)):
     """撤销上一次整理。"""
