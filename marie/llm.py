@@ -13,6 +13,7 @@ import json
 import os
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -115,12 +116,21 @@ def _classify_image(f: FileInfo, rule: str) -> Tuple[str, str]:
 
 
 def classify_files(files: List[FileInfo], rule: str = "") -> Dict[Path, Tuple[str, str]]:
+    """并发分类:文本走一次批量请求,图片各自并行,失败回退规则。"""
     images = [f for f in files if f.ext in IMAGE_EXTS]
     others = [f for f in files if f.ext not in IMAGE_EXTS]
-    out = _classify_text(others, rule)
-    for f in images:
-        try:
-            out[f.path] = _classify_image(f, rule)
-        except Exception as e:
-            print(f"[图片分类失败] {f.name}: {e}", file=sys.stderr)  # 失败 → CLI 回退规则
+    out: Dict[Path, Tuple[str, str]] = {}
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        text_fut = ex.submit(_classify_text, others, rule) if others else None
+        img_futs = {ex.submit(_classify_image, f, rule): f for f in images}
+        if text_fut:
+            try:
+                out.update(text_fut.result())
+            except Exception as e:
+                print(f"[文本分类失败] {e}", file=sys.stderr)
+        for fut, f in img_futs.items():
+            try:
+                out[f.path] = fut.result()
+            except Exception as e:
+                print(f"[图片分类失败] {f.name}: {e}", file=sys.stderr)
     return out
