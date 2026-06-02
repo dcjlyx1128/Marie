@@ -12,6 +12,7 @@ import io
 import json
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -120,6 +121,6 @@ def classify_files(files: List[FileInfo], rule: str = "") -> Dict[Path, Tuple[st
     for f in images:
         try:
             out[f.path] = _classify_image(f, rule)
-        except Exception:
-            pass  # 视觉失败 → CLI 中回退规则分类
+        except Exception as e:
+            print(f"[图片分类失败] {f.name}: {e}", file=sys.stderr)  # 失败 → CLI 回退规则
     return out
