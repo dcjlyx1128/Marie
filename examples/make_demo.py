@@ -18,17 +18,18 @@ IMAGES = {
 
 
 def _make_image(path: Path, text: str, color):
-    try:
-        from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw
 
-        img = Image.new("RGB", (640, 400), color)
-        ImageDraw.Draw(img).text((30, 180), text, fill="white")
-        img.save(path)
-    except Exception:
-        path.write_text("fake")  # 无 pillow 时降级
+    img = Image.new("RGB", (640, 400), color)
+    ImageDraw.Draw(img).text((30, 180), text, fill="white")
+    img.save(path)
 
 
 def main():
+    try:
+        import PIL  # noqa: F401
+    except ImportError:
+        raise SystemExit("需要 Pillow 才能生成演示图片,请先安装: pip install pillow")
     DEMO.mkdir(exist_ok=True)
     for name, content in NON_IMAGE.items():
         (DEMO / name).write_text(content)
