@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import pytest
+
+import marie.cache as cache
 from marie.classifier import is_ambiguous, rule_category
 from marie.config import default_config
 from marie.executor import execute
@@ -7,6 +10,12 @@ from marie.models import FileInfo
 from marie.pipeline import category_dirs, decide_all
 from marie.planner import plan
 from marie.scanner import scan
+
+
+@pytest.fixture(autouse=True)
+def _isolate_cache(tmp_path, monkeypatch):
+    """每个测试用独立缓存文件,绝不读写真实的 ~/.marie/cache.json。"""
+    monkeypatch.setattr(cache, "CACHE_FILE", tmp_path / "cache.json")
 
 
 def _fi(p):
@@ -109,3 +118,38 @@ def test_ai_call_failure_goes_fallback(monkeypatch):
 
     monkeypatch.setattr("marie.llm.classify_files", boom)
     assert decide_all([pdf], c, use_ai=True)[pdf.path] == (c.fallback, "doc.pdf")
+
+
+def test_cache_second_run_no_ai_call(tmp_path, monkeypatch):
+    c = default_config()
+    pdf = tmp_path / "doc.pdf"
+    pdf.write_text("发票内容")
+    f = FileInfo(pdf, pdf.stat().st_size, pdf.stat().st_mtime)
+    calls = {"n": 0}
+
+    def fake(files, allowed, *a, **k):
+        calls["n"] += 1
+        return {x.path: ("工作", x.name) for x in files}
+
+    monkeypatch.setattr("marie.llm.classify_files", fake)
+    d1 = decide_all([f], c, use_ai=True)
+    d2 = decide_all([f], c, use_ai=True)  # 第二次应命中缓存
+    assert d1[f.path] == d2[f.path] == ("文档/工作", "doc.pdf")
+    assert calls["n"] == 1  # AI 仅被调用一次
+
+
+def test_cache_hits_duplicate_content(tmp_path, monkeypatch):
+    c = default_config()
+    a, b = tmp_path / "a.pdf", tmp_path / "b.pdf"
+    a.write_text("同样的内容")
+    b.write_text("同样的内容")  # 同内容、不同文件名
+    calls = {"n": 0}
+
+    def fake(files, allowed, *a_, **k):
+        calls["n"] += 1
+        return {x.path: ("工作", x.name) for x in files}
+
+    monkeypatch.setattr("marie.llm.classify_files", fake)
+    decide_all([FileInfo(a, a.stat().st_size, 0.0)], c, use_ai=True)
+    decide_all([FileInfo(b, b.stat().st_size, 0.0)], c, use_ai=True)  # 同内容命中缓存
+    assert calls["n"] == 1

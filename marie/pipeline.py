@@ -30,16 +30,33 @@ def decide_all(files: List[FileInfo], config: Config, use_ai: bool = False, rule
             out[f.path] = (cat, f.name)
 
     if ai_files and use_ai:
-        from . import llm
+        from . import cache, llm
 
-        allowed = {f.path: config.categories[cat_of[f.path]].subcategories for f in ai_files}
-        try:
-            results = llm.classify_files(ai_files, allowed, config.model, config.vision_model, config.base_url, rule)
-        except Exception:
-            results = {}
+        store = cache.load()
+        keys = {}
         for f in ai_files:
-            cat = cat_of[f.path]
-            sub, new_name = results.get(f.path, ("", f.name))
+            try:
+                keys[f.path] = cache.key(f.path)
+            except OSError:
+                keys[f.path] = None  # 读不到内容则不缓存,本次照常询问
+        to_ask = [f for f in ai_files if not (keys[f.path] and keys[f.path] in store)]
+        fresh = {}
+        if to_ask:
+            allowed = {f.path: config.categories[cat_of[f.path]].subcategories for f in to_ask}
+            try:
+                fresh = llm.classify_files(to_ask, allowed, config.model, config.vision_model, config.base_url, rule)
+            except Exception:
+                fresh = {}
+            wrote = False
+            for f in to_ask:  # 仅缓存"模型有应答"的结果(失败/省略的留待下次重试)
+                if keys[f.path] and f.path in fresh:
+                    store[keys[f.path]] = list(fresh[f.path])
+                    wrote = True
+            if wrote:
+                cache.save(store)
+        for f in ai_files:
+            cat, k = cat_of[f.path], keys[f.path]
+            sub, new_name = store[k] if k and k in store else fresh.get(f.path, ("", f.name))
             out[f.path] = (f"{cat}/{sub}", new_name) if sub in config.categories[cat].subcategories \
                 else (config.fallback, f.name)
     else:
