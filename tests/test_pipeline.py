@@ -53,3 +53,59 @@ def test_organize_idempotent(tmp_path):
     assert (tmp_path / "视频" / "a.mp4").exists()
     # 第二次:已整理目录被跳过,无文件可整理
     assert scan(tmp_path, recursive=True, skip=skip) == []
+
+
+def test_ai_constrains_to_subcategory(monkeypatch):
+    c = default_config()
+    f = _fi("report.pdf")  # 文档,ai:true
+
+    def fake(files, allowed, *a, **k):
+        assert [x.path for x in files] == [f.path]
+        assert allowed[f.path] == c.categories["文档"].subcategories  # 只允许该大类子类
+        return {f.path: ("财务/发票", "发票.pdf")}
+
+    monkeypatch.setattr("marie.llm.classify_files", fake)
+    assert decide_all([f], c, use_ai=True)[f.path] == ("文档/财务/发票", "发票.pdf")
+
+
+def test_ai_invalid_goes_fallback(monkeypatch):
+    c = default_config()
+    f = _fi("report.pdf")
+    monkeypatch.setattr("marie.llm.classify_files", lambda files, allowed, *a, **k: {f.path: ("乱编的", "x.pdf")})
+    assert decide_all([f], c, use_ai=True)[f.path] == (c.fallback, "report.pdf")
+
+
+def test_ai_only_called_for_ambiguous(monkeypatch):
+    c = default_config()
+    mp4, pdf, unk = _fi("a.mp4"), _fi("doc.pdf"), _fi("x.unknown")
+    seen = []
+
+    def fake(files, allowed, *a, **k):
+        seen.extend(x.path for x in files)
+        return {pdf.path: ("工作", "doc.pdf")}
+
+    monkeypatch.setattr("marie.llm.classify_files", fake)
+    d = decide_all([mp4, pdf, unk], c, use_ai=True)
+    assert seen == [pdf.path]                       # 仅 ai 大类文件送 AI
+    assert d[mp4.path] == ("视频", "a.mp4")          # 规则确定,不调 AI
+    assert d[pdf.path] == ("文档/工作", "doc.pdf")
+    assert d[unk.path] == (c.fallback, "x.unknown")  # 未命中,不调 AI
+
+
+def test_no_ai_keeps_category(monkeypatch):
+    c = default_config()
+    pdf = _fi("doc.pdf")
+    monkeypatch.setattr("marie.llm.classify_files",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("不应调用 AI")))
+    assert decide_all([pdf], c, use_ai=False)[pdf.path] == ("文档", "doc.pdf")  # 归大类本身
+
+
+def test_ai_call_failure_goes_fallback(monkeypatch):
+    c = default_config()
+    pdf = _fi("doc.pdf")
+
+    def boom(*a, **k):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr("marie.llm.classify_files", boom)
+    assert decide_all([pdf], c, use_ai=True)[pdf.path] == (c.fallback, "doc.pdf")

@@ -27,6 +27,7 @@ class Config:
     ai_fallback: bool = True
     model: str = "qwen-plus"
     vision_model: str = "qwen-vl-plus"
+    base_url: str = ""  # OpenAI 兼容接口地址;留空用内置默认(可被环境变量 MARIE_BASE_URL 覆盖)
     categories: Dict[str, Category] = field(default_factory=dict)
     fallback: str = "其他/待分类"
 
@@ -37,6 +38,7 @@ base: "."                    # 整理到哪个根目录
 ai_fallback: true            # 模糊文件是否调用 AI
 model: qwen-plus
 vision_model: qwen-vl-plus
+base_url: https://dashscope.aliyuncs.com/compatible-mode/v1  # 任意 OpenAI 兼容接口
 
 categories:
   视频:   { ext: [.mp4, .mov, .mkv] }
@@ -73,6 +75,7 @@ def _parse(data: dict) -> Config:
         ai_fallback=bool(data.get("ai_fallback", True)),
         model=data.get("model", "qwen-plus"),
         vision_model=data.get("vision_model", "qwen-vl-plus"),
+        base_url=data.get("base_url", ""),
         categories=cats,
         fallback=data.get("fallback", "其他/待分类"),
     )

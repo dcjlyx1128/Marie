@@ -32,7 +32,12 @@ def organize(
         console.print("[yellow]没有可整理的文件。[/]")
         raise typer.Exit()
 
-    decisions = decide_all(files, config, use_ai=ai or bool(rule))
+    use_ai = ai or bool(rule)
+    if use_ai:
+        with console.status("[cyan]AI 分析模糊文件中…[/]"):
+            decisions = decide_all(files, config, use_ai=True, rule=rule)
+    else:
+        decisions = decide_all(files, config)
     actions = plan(files, folder, lambda f: decisions[f.path])
     table = Table(title=f"整理预览:{folder}  (共 {len(actions)} 个文件)")
     table.add_column("文件", style="cyan", overflow="fold")
