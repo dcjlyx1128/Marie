@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .executor import execute
 from .models import FileInfo
-from .pipeline import category_dirs, decide_all
+from .pipeline import archive_root, category_dirs, decide_all
 from .planner import plan
 from .config import CONFIG_NAME
 
@@ -41,12 +41,12 @@ def _stable(path: Path, debounce: float) -> bool:
 
 
 def handle(path: Path, folder: Path, config):
-    """处理单个文件:决策 → 移动 → 追加 undo 日志。返回 dest;无动作返回 None。"""
+    """处理单个文件:决策 → 移动到归档根目录 → 追加 undo 日志(写在 folder)。返回 dest;无动作返回 None。"""
     path = Path(path)
     st = path.stat()
     f = FileInfo(path, st.st_size, st.st_mtime)
     cat, new_name = decide_all([f], config, use_ai=config.ai_fallback)[path]
-    actions = plan([f], folder, lambda _f: (cat, new_name))
+    actions = plan([f], archive_root(folder, config), lambda _f: (cat, new_name))
     if not actions:
         return None
     execute(actions, folder, append=True)
@@ -61,6 +61,7 @@ def watch(folder: Path, config, log=print):
     from watchdog.observers import Observer
 
     folder, skip = Path(folder).resolve(), category_dirs(config)
+    base = archive_root(folder, config)
     lock = threading.Lock()
 
     class _Handler(FileSystemEventHandler):
@@ -85,7 +86,11 @@ def watch(folder: Path, config, log=print):
                     log(f"[red]处理失败 {path.name}: {ex}[/]")
                     return
             if dest:
-                log(f"[green]✓ {path.name} → {dest.relative_to(folder)}[/]")
+                try:
+                    rel = dest.relative_to(base)
+                except ValueError:
+                    rel = dest
+                log(f"[green]✓ {path.name} → {rel}[/]")
 
     obs = Observer()
     obs.schedule(_Handler(), str(folder), recursive=False)

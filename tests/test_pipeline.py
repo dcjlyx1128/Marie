@@ -7,7 +7,7 @@ from marie.classifier import is_ambiguous, rule_category
 from marie.config import default_config
 from marie.executor import execute
 from marie.models import FileInfo
-from marie.pipeline import category_dirs, decide_all
+from marie.pipeline import archive_root, category_dirs, decide_all
 from marie.planner import plan
 from marie.scanner import scan
 
@@ -83,6 +83,31 @@ def test_undo_removes_empty_dirs(tmp_path):
     undo(tmp_path)
     assert (tmp_path / "a.mp4").exists()
     assert not (tmp_path / "视频").exists()  # 空目录被清理
+
+
+def test_archive_root():
+    c = default_config()
+    assert archive_root(Path("/src"), c) == Path("/src")          # base="." → 原文件夹
+    c.base = "~/out"
+    assert archive_root(Path("/src"), c) == (Path.home() / "out").resolve()  # 支持 ~
+
+
+def test_archive_to_custom_base(tmp_path):
+    from marie.executor import undo
+
+    src, dst = tmp_path / "src", tmp_path / "dst"
+    src.mkdir()
+    (src / "a.mp4").write_text("x")
+    c = default_config()
+    c.base = str(dst)
+    base = archive_root(src, c)
+    files = scan(src, skip=category_dirs(c))
+    dec = decide_all(files, c)
+    execute(plan(files, base, lambda f: dec[f.path]), src)  # 归档到 dst,日志写在 src
+    assert (base / "视频" / "a.mp4").exists()       # 移到了另一个根目录
+    assert (src / ".marie_undo.json").exists()      # undo 日志留在被操作文件夹
+    undo(src)
+    assert (src / "a.mp4").exists()                 # undo 仍可还原
 
 
 def test_ai_constrains_to_subcategory(monkeypatch):

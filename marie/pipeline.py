@@ -13,6 +13,17 @@ def category_dirs(config: Config) -> Set[str]:
     return {Path(n).parts[0] for n in names}
 
 
+def archive_root(folder: Path, config: Config) -> Path:
+    """归档根目录:config.base 为 '.' 或空时即原文件夹;否则用 base(支持 ~ 与相对 folder 的路径)。"""
+    b = (config.base or ".").strip()
+    if b in ("", "."):
+        return Path(folder)
+    p = Path(b).expanduser()
+    if not p.is_absolute():
+        p = Path(folder) / p
+    return p.resolve()
+
+
 def decide_all(files: List[FileInfo], config: Config, use_ai: bool = False, rule: str = "") -> Dict[Path, Tuple[str, str]]:
     """对每个文件给出 (分类, 新文件名)。
     规则命中且非 ai 大类 → 直接定;规则未命中 → fallback;

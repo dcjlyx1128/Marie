@@ -33,9 +33,12 @@ marie organize examples/messy          # 纯规则:快、免费、稳定一致
 
 ## 👀 watch 自动整理(杀手功能)
 ```bash
-marie watch ~/Downloads
+marie watch ~/Downloads                 # 监听并整理进 ~/Downloads 内部
+marie watch ~/Downloads --to ~/Archive  # 监听 ~/Downloads,但归档到 ~/Archive
 ```
-监听文件夹,新文件稳定后自动归类。只移不删、写 undo 日志,`marie undo ~/Downloads` 可撤销。Ctrl-C 停止。
+监听文件夹,新文件稳定后自动归类。只移不删、写 undo 日志,`marie undo ~/Downloads` 可撤销(撤销始终锚定在被监听文件夹)。Ctrl-C 停止。
+
+> **监听与归档都灵活**:监听哪个文件夹由命令行参数决定;归档到哪由 `--to`(或配置 `base`)决定,默认就地整理进原文件夹。`organize` 同样支持 `--to`。
 
 ## 🧠 AI 智能细分(可选)
 仅对配置中标了 `ai: true` 的大类(如 文档、图片)中的文件才调用 LLM,细分到固定子类:
