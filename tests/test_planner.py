@@ -11,7 +11,7 @@ def _mk(tmp, name):
 def test_plan_categorizes(tmp_path):
     files = [_mk(tmp_path, "a.jpg"), _mk(tmp_path, "b.pdf"), _mk(tmp_path, "c.zzz")]
     cats = {a.src.name: a.category for a in plan(files, tmp_path)}
-    assert cats == {"a.jpg": "图片", "b.pdf": "文档", "c.zzz": "其他"}
+    assert cats == {"a.jpg": "图片", "b.pdf": "文档", "c.zzz": "其他/待分类"}
 
 
 def test_plan_dest_under_category(tmp_path):

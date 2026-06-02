@@ -1,14 +1,20 @@
 from pathlib import Path
 from typing import Callable, List, Optional, Set, Tuple
 
-from .classifier import classify
+from .classifier import rule_category
+from .config import default_config
 from .models import Action, FileInfo
 
 Decide = Callable[[FileInfo], Tuple[str, str]]  # 文件 -> (分类, 新文件名)
 
+_DEFAULT_CONFIG = None
+
 
 def _rule(f: FileInfo) -> Tuple[str, str]:
-    return classify(f), f.name
+    global _DEFAULT_CONFIG
+    if _DEFAULT_CONFIG is None:
+        _DEFAULT_CONFIG = default_config()
+    return rule_category(f, _DEFAULT_CONFIG) or _DEFAULT_CONFIG.fallback, f.name
 
 
 def _unique(dest: Path, reserved: Set[Path]) -> Path:
@@ -26,7 +32,10 @@ def plan(files: List[FileInfo], base: Path, decide: Optional[Decide] = None) -> 
     actions, reserved = [], set()
     for f in files:
         cat, new_name = decide(f)
-        dest = _unique(base / cat / new_name, reserved)
+        target = base / cat / new_name
+        if target == f.path:  # 已在目标位置,跳过(幂等)
+            continue
+        dest = _unique(target, reserved)
         reserved.add(dest)
         actions.append(Action(f.path, dest, cat))
     return actions

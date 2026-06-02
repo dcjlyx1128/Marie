@@ -16,6 +16,7 @@ GLOBAL_CONFIG = Path.home() / ".marie" / "config.yaml"
 class Category:
     name: str
     ext: Set[str] = field(default_factory=set)
+    match: List[str] = field(default_factory=list)  # 文件名 glob 规则(更具体,优先于扩展名)
     ai: bool = False
     subcategories: List[str] = field(default_factory=list)
 
@@ -63,6 +64,7 @@ def _parse(data: dict) -> Config:
         cats[name] = Category(
             name=name,
             ext={e.lower() for e in (c.get("ext") or [])},
+            match=list(c.get("match") or []),
             ai=bool(c.get("ai", False)),
             subcategories=list(c.get("subcategories") or []),
         )
@@ -80,11 +82,13 @@ def default_config() -> Config:
     return _parse(yaml.safe_load(DEFAULT_YAML))
 
 
-def load_config(start_dir: Path = Path(".")) -> Config:
-    """就近查找配置:本地 ./marie.yaml 优先,其次全局,最后内置默认。"""
-    for path in (Path(start_dir) / CONFIG_NAME, GLOBAL_CONFIG):
-        if path.is_file():
-            return _parse(yaml.safe_load(path.read_text(encoding="utf-8")) or {})
+def load_config(start_dir: Path = Path("."), path: Path = None) -> Config:
+    """加载配置。指定 path 时只读该文件;否则就近查找:本地 → 全局 → 内置默认。"""
+    if path:
+        return _parse(yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {})
+    for p in (Path(start_dir) / CONFIG_NAME, GLOBAL_CONFIG):
+        if p.is_file():
+            return _parse(yaml.safe_load(p.read_text(encoding="utf-8")) or {})
     return default_config()
 
 
