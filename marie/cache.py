@@ -9,10 +9,10 @@ _BLOCK = 65536  # 大文件只取首尾块,避免全量读取
 
 
 def key(path: Path) -> str:
-    """内容指纹:size + 首尾块 hash(同内容文件得到同一 key)。"""
+    """内容指纹:扩展名 + size + 首尾块 hash(同内容同类型文件得到同一 key)。"""
     p = Path(path)
     size = p.stat().st_size
-    h = hashlib.sha256(str(size).encode())
+    h = hashlib.sha256((p.suffix.lower() + str(size)).encode())
     with p.open("rb") as f:
         h.update(f.read(_BLOCK))
         if size > _BLOCK:

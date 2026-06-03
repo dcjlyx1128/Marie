@@ -67,7 +67,8 @@ def decide_all(files: List[FileInfo], config: Config, use_ai: bool = False, rule
                 cache.save(store)
         for f in ai_files:
             cat, k = cat_of[f.path], keys[f.path]
-            sub, new_name = store[k] if k and k in store else fresh.get(f.path, ("", f.name))
+            # 本次询问到的用各自的 fresh 结果(避免同内容文件经缓存互相覆盖);否则才读缓存
+            sub, new_name = fresh.get(f.path) or (store[k] if k and k in store else ("", f.name))
             out[f.path] = (f"{cat}/{sub}", new_name) if sub in config.categories[cat].subcategories \
                 else (config.fallback, f.name)
     else:

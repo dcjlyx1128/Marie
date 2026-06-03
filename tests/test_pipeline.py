@@ -184,6 +184,21 @@ def test_cache_second_run_no_ai_call(tmp_path, monkeypatch):
     assert calls["n"] == 1  # AI 仅被调用一次
 
 
+def test_same_content_no_name_collapse(tmp_path, monkeypatch):
+    # 两个同内容文件不应经缓存互相覆盖文件名(各自保留自己的名字/扩展名)
+    c = default_config()
+    a, b = tmp_path / "a.pdf", tmp_path / "b.pdf"
+    a.write_text("same")
+    b.write_text("same")
+    fa = FileInfo(a, a.stat().st_size, 0.0)
+    fb = FileInfo(b, b.stat().st_size, 0.0)
+    monkeypatch.setattr("marie.llm.classify_files",
+                        lambda files, allowed, *a_, **k: {f.path: ("工作", f.name) for f in files})
+    d = decide_all([fa, fb], c, use_ai=True)
+    assert d[a] == ("文档/工作", "a.pdf")
+    assert d[b] == ("文档/工作", "b.pdf")
+
+
 def test_cache_hits_duplicate_content(tmp_path, monkeypatch):
     c = default_config()
     a, b = tmp_path / "a.pdf", tmp_path / "b.pdf"
